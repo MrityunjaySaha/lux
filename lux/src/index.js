@@ -1,0 +1,16 @@
+import React from 'react';
+import './index.scss'
+import ReactDOM from 'react-dom/client';
+import App from './App';
+import { DarkModeContextProvider } from './context/darkModeContext';
+import { AuthContextProvider } from './context/AuthContext';
+import "bootstrap/dist/css/bootstrap.css";
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(
+    <DarkModeContextProvider>
+      <AuthContextProvider>
+        <App />
+      </AuthContextProvider>
+    </DarkModeContextProvider>
+);

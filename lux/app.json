@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "luxmi",
+    "slug": "luxmi",
+    "version": "0.1.0",
+    "description": "This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).",
+    "sdkVersion": "49.0.0",
+    "platforms": [],
+    "ios": {
+      "bundleIdentifier": "lux"
+    }
+  }
+}

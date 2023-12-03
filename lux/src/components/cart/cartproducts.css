@@ -1,0 +1,6 @@
+.cart-products-container {
+    display: flex; /* Use flex display for horizontal layout */
+    justify-content: space-between; /* Adjust spacing between items */
+    /* Other styling properties */
+}
+  
