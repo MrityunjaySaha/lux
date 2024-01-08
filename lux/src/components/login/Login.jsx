@@ -23,7 +23,7 @@ const Login = () => {
       if (user) {
         const customClaims = (await user.getIdTokenResult()).claims;
         const userRole = customClaims.role;
-console.log(userRole);
+        console.log(userRole);
         // Redirect user based on their role
         switch (userRole) {
           case 'admin':
@@ -51,7 +51,7 @@ console.log(userRole);
             navigate('/employee');
             break;
           default:
-            navigate('/login'); // You can redirect to a general dashboard or specific route
+            navigate('/userhome'); // You can redirect to a general dashboard or specific route
             break;
         }
       }

@@ -1,4 +1,4 @@
-import React, { useContext} from 'react';
+import React, { useContext } from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import Admin from './pages/home/Home';
 import AdminProducts from './components/adminproducts/AdminProducts';
@@ -36,7 +36,7 @@ import PhoneSignUp from './components/phoneSignUp/PhoneSignUp';
 function App() {
   const { darkMode } = useContext(DarkModeContext);
   const { currentUser } = useContext(AuthContext);
-  
+
   const RequireAuth = ({ children }) => {
     return currentUser ? (
       children
@@ -53,8 +53,8 @@ function App() {
             <Route path="/" element={<Welcome />} /> {/* Set the welcome page as the index page */}
             <Route path="/login" element={<Login />} />
             <Route path="/phonesignup" element={<PhoneSignUp />} />
-            <Route path="/signup" element={<SignUp inputs={userInputs} title="Thank You For Choosing Us!"/>} />
-            <Route path="/userhome" element={<RequireAuth><UserHome /></RequireAuth>} />
+            <Route path="/signup" element={<SignUp inputs={userInputs} title="Thank You For Choosing Us!" />} />
+            <Route path="/userhome" element={<UserHome />} />
             <Route path="/admin" element={<RequireAuth><Admin /></RequireAuth>} />
             <Route path="/superadmin" element={<RequireAuth><SuperAdmin /></RequireAuth>} />
             <Route path="/adminproducts" element={<RequireAuth><AdminProducts /></RequireAuth>} />
@@ -67,18 +67,18 @@ function App() {
             <Route path="/nonprofit" element={<RequireAuth><NonProfit /></RequireAuth>} />
             <Route path="/semiprofit" element={<RequireAuth><SemiProfit /></RequireAuth>} />
             <Route path="/employee" element={<RequireAuth><Employee /></RequireAuth>} />
-            <Route path="/products" element={<RequireAuth><Products /></RequireAuth>} />
-            <Route path="/services" element={<RequireAuth><Services /></RequireAuth>} />
-            <Route path="/addservices" element={<RequireAuth><AddServices /></RequireAuth>} />
-            <Route path="/productlink" element={<RequireAuth><ProductLink /></RequireAuth>} />
-            <Route path="/servicelink" element={<RequireAuth><ServiceLink /></RequireAuth>} />
-            <Route path="/cart" element={<RequireAuth><Cart /></RequireAuth>} />
-            <Route path="/product/:productId" element={<RequireAuth><ProductDetails/></RequireAuth>} />
-            <Route path="/service/:serviceId" element={<RequireAuth><ServiceDetails/></RequireAuth>} />
-            <Route path="/products/new" element={<RequireAuth><New inputs={productInputs} title="Add New Product" /></RequireAuth>} />
-            <Route path="/sterling" element={<RequireAuth><Sterling /></RequireAuth>} />
-            <Route path="/star" element={<RequireAuth><STar /></RequireAuth>} />
-            <Route path="/auction" element={<RequireAuth><AuctionBody /></RequireAuth>} />
+            <Route path="/products" element={<Products />} />
+            <Route path="/services" element={<Services />} />
+            <Route path="/addservices" element={<AddServices />} />
+            <Route path="/productlink" element={<ProductLink />} />
+            <Route path="/servicelink" element={<ServiceLink />} />
+            <Route path="/cart" element={<Cart />} />
+            <Route path="/product/:productId" element={<ProductDetails />} />
+            <Route path="/service/:serviceId" element={<ServiceDetails />} />
+            <Route path="/products/new" element={<New inputs={productInputs} title="Add New Product" />} />
+            <Route path="/sterling" element={<Sterling />} />
+            <Route path="/star" element={<STar />} />
+            <Route path="/auction" element={<AuctionBody />} />
             <Route path="*" element={<div>Page Not Found!</div>} />
           </Routes>
         </Router>
