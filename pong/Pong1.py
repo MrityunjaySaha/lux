@@ -3,7 +3,7 @@ import pygame
 
 # Initialize Pygame mixer
 pygame.mixer.init()
-bounce_sound = pygame.mixer.Sound("Desktop/Apps/pong/bounce.mp3")
+bounce_sound = pygame.mixer.Sound("/Users/mrityunjaoysaha/Desktop/pong/bounce.mp3")
 
 wn = turtle.Screen()
 wn.title("Pong by @Gholu")
