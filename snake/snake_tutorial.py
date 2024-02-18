@@ -1,5 +1,6 @@
 import math
 import random
+from matplotlib.font_manager import weight_dict
 import pygame
 import sys
 import tkinter as tk
@@ -150,7 +151,38 @@ def message_box(subject, content):
     root.attributes("-topmost", True)
     root.withdraw()
     messagebox.showinfo(subject, content)
-    root.destroy()
+    try:
+        root.destroy()
+    except:
+        pass  # Ensure Tkinter cleanup doesn't cause crash if it fails
+
+def game_over_screen(surface, score):
+    surface.fill((0, 0, 0))  # Clear the screen with a black background
+    font = pygame.font.SysFont("arial", 35)  # Choose a font and size
+    
+    # Render the game over and score text
+    game_over_text = font.render(f"Game Over! Your Score: {score}", True, (255, 255, 255))
+    play_again_text = font.render("Press SPACE to play again or ESC to quit.", True, (255, 255, 255))
+    
+    # Position the text in the center of the screen
+    # Corrected the reference from `weight_dict / 2 - 20` to `height / 2 - 20`
+    text_rect = game_over_text.get_rect(center=(width / 2, width / 2 - 20))
+    play_again_rect = play_again_text.get_rect(center=(width / 2, width / 2 + 20))
+    
+    surface.blit(game_over_text, text_rect)
+    surface.blit(play_again_text, play_again_rect)
+    pygame.display.flip()  # Update the display to show the text
+    
+    # Wait for the player's response
+    while True:
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return False  # Quit the game
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    return True  # Play again
+                if event.key == pygame.K_ESCAPE:
+                    return False  # Quit the game
 
 def main():
     global width, rows, s, snack
@@ -159,36 +191,29 @@ def main():
     win = pygame.display.set_mode((width, width))
     s = Snake((255,0,0), (10,10))
     snack = Cube(randomSnack(rows, s), color=(0,255,0))
-    flag = True
-
+    
     clock = pygame.time.Clock()
-
-    while flag:
+    
+    while True:
         pygame.time.delay(50)
         clock.tick(10)
         s.move()
         if s.body[0].pos == snack.pos:
             s.addCube()
             snack = Cube(randomSnack(rows, s), color=(0,255,0))
-        
+
         for x in range(len(s.body)):
             if s.body[x].pos in list(map(lambda z:z.pos, s.body[x+1:])):
-                print('Score: ', len(s.body))
-                message_box('You Lost!', 'Play again?')
-                s.reset((10,10))
+                play_again = game_over_screen(win, len(s.body))
+                if play_again:
+                    s.reset((10,10))  # Reset the game state for a new game
+                else:
+                    pygame.quit()
+                    sys.exit()
                 break
 
         redrawWindow(win)
 
 if __name__ == "__main__":
     pygame.init()
-    try:
-        main()
-    except Exception as e:
-        print("Caught an exception:")
-        traceback.print_exc()  # Use traceback to print detailed exception info
-        pygame.quit()
-        # Optionally show a message box in case of an exception
-        message_box("Game Error", "An unexpected error occurred. Please check the console for details.")
-    finally:
-        pygame.quit()
+    main()
