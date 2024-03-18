@@ -6,6 +6,7 @@ import os
 # Constants
 FACES_FOLDER = "/Users/mrityunjaoysaha/Desktop/facial_recognition/faces"
 FACE_RECOGNITION_THRESHOLD = 0.6  # Adjust this threshold as needed
+MATCH_THRESHOLD = 0.4  # Threshold to consider as a match
 
 # Update these paths to where you've stored the model files
 predictor_path = "/Users/mrityunjaoysaha/Desktop/facial_recognition/shape_predictor_68_face_landmarks.dat"
@@ -24,53 +25,34 @@ def compute_distance(encoding1, encoding2):
 def extract_face_encodings(frame):
     detected_faces = detector(frame, 1)
     face_encodings = []
+    face_locations = []  # Store the face locations
     for k, d in enumerate(detected_faces):
         shape = shape_predictor(frame, d)
         face_descriptor = face_rec_model.compute_face_descriptor(frame, shape)
         face_encodings.append(np.array(face_descriptor))
-    return face_encodings, detected_faces
-
-# Function to recognize faces
-def recognize_faces(frame):
-    # Extract face encodings from the frame
-    face_encodings, face_locations = extract_face_encodings(frame)
-
-    # Initialize lists to store recognized names and distances
-    recognized_names = []
-    percentages = []
-
-    # Compare face encodings with known face encodings
-    if known_face_encodings and face_encodings:  # Check if there are any known face encodings and detected faces
-        for face_encoding in face_encodings:
-            # Compute distance between the current face encoding and all known face encodings
-            face_distances = [compute_distance(face_encoding, known_face_encoding) for known_face_encoding in known_face_encodings]
-
-            # Find all indices with distances below the threshold (matching faces)
-            matching_indices = [i for i, distance in enumerate(face_distances) if distance < FACE_RECOGNITION_THRESHOLD]
-
-            # Get corresponding names and percentages
-            matching_names = [known_face_names[i] for i in matching_indices]
-            matching_percentages = [100 - distance * 100 for distance in face_distances if distance < FACE_RECOGNITION_THRESHOLD]
-
-            # Append matching names and percentages to the recognized_names and percentages lists
-            recognized_names.append(matching_names)
-            percentages.append(matching_percentages)
-
-    return recognized_names, percentages, face_locations
+        face_locations.append(d)  # Store the face location
+    return face_encodings, face_locations
 
 # Load known face encodings and their names
-known_face_encodings = []  # List to store known face encodings
-known_face_names = []  # List to store corresponding known face names
+known_faces = {}  # Dictionary to store known face encodings and their corresponding names
 
 # Load face images from the "faces" folder and generate their encodings
-for file_name in os.listdir(FACES_FOLDER):
-    if file_name.endswith(('.jpg', '.png', '.jpeg')):
-        image_path = os.path.join(FACES_FOLDER, file_name)
-        face_image = cv2.imread(image_path)
-        face_encodings, _ = extract_face_encodings(face_image)
-        if face_encodings:
-            known_face_encodings.append(face_encodings[0])
-            known_face_names.append(os.path.splitext(file_name)[0])
+for person_folder in os.listdir(FACES_FOLDER):
+    person_folder_path = os.path.join(FACES_FOLDER, person_folder)
+    if os.path.isdir(person_folder_path):  # If it's a folder, treat it as a person's name
+        person_name = person_folder
+        person_encodings = []
+        for file_name in os.listdir(person_folder_path):
+            if file_name.endswith(('.jpg', '.png', '.jpeg')):
+                image_path = os.path.join(person_folder_path, file_name)
+                face_image = cv2.imread(image_path)
+                face_encodings, _ = extract_face_encodings(face_image)
+                if face_encodings:
+                    person_encodings.extend(face_encodings)
+        if person_encodings:
+            # Compute the average encoding for this person
+            avg_encoding = np.mean(person_encodings, axis=0)
+            known_faces[person_name] = avg_encoding
 
 # Webcam capture
 cap = cv2.VideoCapture(0)
@@ -88,14 +70,32 @@ while True:
     rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
     
     # Recognize faces
-    recognized_names, percentages, face_locations = recognize_faces(rgb_frame)
+    face_encodings, face_locations = extract_face_encodings(rgb_frame)
+    recognized_names = []
 
-    # Display recognized names and percentages
-    for names, percents, face_loc in zip(recognized_names, percentages, face_locations):
-        top, right, bottom, left = face_loc.top(), face_loc.right(), face_loc.bottom(), face_loc.left()
-        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-        text = ', '.join([f"{name} ({percent:.2f}%)" for name, percent in zip(names, percents)])
-        cv2.putText(frame, text, (left, bottom + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+    # Compare face encodings with known face encodings
+    for face_encoding, face_location in zip(face_encodings, face_locations):
+        min_distance = float('inf')  # Initialize minimum distance
+        matching_names = []
+        for name, encoding in known_faces.items():
+            distance = compute_distance(face_encoding, encoding)
+            if distance < FACE_RECOGNITION_THRESHOLD and distance < MATCH_THRESHOLD:
+                matching_names.append((name, 100 - distance * 100))
+        if matching_names:
+            recognized_names.append(matching_names)
+
+        # Unpack the face location and draw rectangle
+        top, right, bottom, left = face_location.top(), face_location.right(), face_location.bottom(), face_location.left()
+        if matching_names:
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)  # Draw green boundary
+        else:
+            cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)  # Draw red boundary
+        
+        # Display the names and percentages under the bounding box
+        text_y = bottom + 20
+        for name, percentage in matching_names:
+            cv2.putText(frame, f"{name} ({percentage:.2f}%)", (left, text_y), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
+            text_y += 20
 
     # Display the resulting image
     cv2.imshow('Webcam Facial Recognition', frame)
