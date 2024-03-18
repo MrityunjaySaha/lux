@@ -1,108 +1,107 @@
-import face_recognition
-import os, sys
 import cv2
+import dlib
 import numpy as np
-import math
+import os
 
-def face_confidence(face_distance, face_match_threshold=0.6):
-    range = (1.0 - face_match_threshold)
-    linear_val = (1.0 - face_distance)/(range * 2.0)
+# Constants
+FACES_FOLDER = "/Users/mrityunjaoysaha/Desktop/facial_recognition/faces"
+FACE_RECOGNITION_THRESHOLD = 0.6  # Adjust this threshold as needed
 
-    if face_distance > face_match_threshold:
-        return str(round(linear_val * 100, 2)) + '%'
-    else:
-        value = (linear_val +((1.0 - linear_val) * math.pow((linear_val - 0.5) * 2, 0.2))) * 100
-        return str(round(value, 2)) + '%'
-    
-class FaceRecognition:
-    face_locations = []
+# Update these paths to where you've stored the model files
+predictor_path = "/Users/mrityunjaoysaha/Desktop/facial_recognition/shape_predictor_68_face_landmarks.dat"
+face_rec_model_path = "/Users/mrityunjaoysaha/Desktop/facial_recognition/dlib_face_recognition_resnet_model_v1.dat"
+
+# Initialize dlib's face detector, shape predictor, and face recognition model
+detector = dlib.get_frontal_face_detector()
+shape_predictor = dlib.shape_predictor(predictor_path)
+face_rec_model = dlib.face_recognition_model_v1(face_rec_model_path)
+
+# Function to compute Euclidean distance between two face encodings
+def compute_distance(encoding1, encoding2):
+    return np.linalg.norm(encoding1 - encoding2)
+
+# Function to extract face encodings using dlib
+def extract_face_encodings(frame):
+    detected_faces = detector(frame, 1)
     face_encodings = []
-    face_names = []
-    known_face_encodings = []
-    known_face_names = []
-    process_current_frame = True
+    for k, d in enumerate(detected_faces):
+        shape = shape_predictor(frame, d)
+        face_descriptor = face_rec_model.compute_face_descriptor(frame, shape)
+        face_encodings.append(np.array(face_descriptor))
+    return face_encodings, detected_faces
 
-    def __init__(self):
-        self.encode_faces()
+# Function to recognize faces
+def recognize_faces(frame):
+    # Extract face encodings from the frame
+    face_encodings, face_locations = extract_face_encodings(frame)
+
+    # Initialize lists to store recognized names and distances
+    recognized_names = []
+    percentages = []
+
+    # Compare face encodings with known face encodings
+    if known_face_encodings and face_encodings:  # Check if there are any known face encodings and detected faces
+        for face_encoding in face_encodings:
+            # Compute distance between the current face encoding and all known face encodings
+            face_distances = [compute_distance(face_encoding, known_face_encoding) for known_face_encoding in known_face_encodings]
+
+            # Find all indices with distances below the threshold (matching faces)
+            matching_indices = [i for i, distance in enumerate(face_distances) if distance < FACE_RECOGNITION_THRESHOLD]
+
+            # Get corresponding names and percentages
+            matching_names = [known_face_names[i] for i in matching_indices]
+            matching_percentages = [100 - distance * 100 for distance in face_distances if distance < FACE_RECOGNITION_THRESHOLD]
+
+            # Append matching names and percentages to the recognized_names and percentages lists
+            recognized_names.append(matching_names)
+            percentages.append(matching_percentages)
+
+    return recognized_names, percentages, face_locations
+
+# Load known face encodings and their names
+known_face_encodings = []  # List to store known face encodings
+known_face_names = []  # List to store corresponding known face names
+
+# Load face images from the "faces" folder and generate their encodings
+for file_name in os.listdir(FACES_FOLDER):
+    if file_name.endswith(('.jpg', '.png', '.jpeg')):
+        image_path = os.path.join(FACES_FOLDER, file_name)
+        face_image = cv2.imread(image_path)
+        face_encodings, _ = extract_face_encodings(face_image)
+        if face_encodings:
+            known_face_encodings.append(face_encodings[0])
+            known_face_names.append(os.path.splitext(file_name)[0])
+
+# Webcam capture
+cap = cv2.VideoCapture(0)
+if not cap.isOpened():
+    print("Error: Camera could not be accessed.")
+    exit()
+
+while True:
+    ret, frame = cap.read()
+    if not ret:
+        print("Error: Failed to capture frame.")
+        break
     
-    def encode_faces(self):
-        # List of valid image extensions, consider adding more if needed.
-        valid_extensions = ['.jpg', '.jpeg', '.png']
-        for image in os.listdir('faces'):
-            # Check if the file has a valid image file extension before processing.
-            if any(image.lower().endswith(ext) for ext in valid_extensions):
-                face_image = face_recognition.load_image_file(f'faces/{image}')
-                # Some images might not contain faces, which would cause face_encodings to be empty.
-                # We should only proceed if face_encodings is not empty to avoid indexing errors.
-                face_encodings = face_recognition.face_encodings(face_image)
-                if face_encodings:
-                    face_encoding = face_encodings[0]
-                    self.known_face_encodings.append(face_encoding)
-                    # You might want to use os.path.splitext to remove the file extension.
-                    self.known_face_names.append(os.path.splitext(image)[0])
-                else:
-                    print(f"No faces found in the image '{image}'.")
-            else:
-                print(f"Skipping non-image file: {image}")
+    # Convert to RGB since dlib uses RGB format
+    rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+    
+    # Recognize faces
+    recognized_names, percentages, face_locations = recognize_faces(rgb_frame)
 
-        print(self.known_face_names)
+    # Display recognized names and percentages
+    for names, percents, face_loc in zip(recognized_names, percentages, face_locations):
+        top, right, bottom, left = face_loc.top(), face_loc.right(), face_loc.bottom(), face_loc.left()
+        cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
+        text = ', '.join([f"{name} ({percent:.2f}%)" for name, percent in zip(names, percents)])
+        cv2.putText(frame, text, (left, bottom + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1, cv2.LINE_AA)
 
-    def run_recognition(self):
-        video_capture = cv2.VideoCapture(0)
+    # Display the resulting image
+    cv2.imshow('Webcam Facial Recognition', frame)
 
-        if not video_capture.isOpened():
-            sys.exit('Video Source not found...')
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
 
-        while True:
-            ret, frame = video_capture.read()
-
-            if self.process_current_frame:
-                # Resize frame for faster face detection processing
-                small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
-                rgb_small_frame = small_frame[:, :, ::-1]
-
-                # Find all face locations in the current frame
-                self.face_locations = face_recognition.face_locations(rgb_small_frame)
-
-                # Correctly use face locations to get face encodings
-                if self.face_locations:
-                    self.face_encodings = face_recognition.face_encodings(rgb_small_frame, self.face_locations)
-
-                    self.face_names = []
-                    for face_encoding in self.face_encodings:
-                        matches = face_recognition.compare_faces(self.known_face_encodings, face_encoding)
-                        name = 'Unknown'
-                        confidence = 'Unknown'
-
-                        if len(matches) > 0 and any(matches):
-                            best_match_index = np.argmin(face_recognition.face_distance(self.known_face_encodings, face_encoding))
-                            if matches[best_match_index]:
-                                name = self.known_face_names[best_match_index]
-                                confidence = self.face_confidence(face_recognition.face_distance(self.known_face_encodings, face_encoding)[best_match_index])
-
-                        self.face_names.append(f'{name}({confidence})')
-
-            self.process_current_frame = not self.process_current_frame
-
-            # Display results
-            for (top, right, bottom, left), name in zip(self.face_locations, self.face_names):
-                top *= 4
-                right *= 4
-                bottom *= 4
-                left *= 4
-
-                cv2.rectangle(frame, (left, top), (right, bottom), (0, 0, 255), 2)
-                cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 0, 255), cv2.FILLED)
-                cv2.putText(frame, name, (left + 6, bottom - 6), cv2.FONT_HERSHEY_DUPLEX, 0.5, (255, 255, 255), 1)
-
-            cv2.imshow('Face Recognition', frame)
-
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-
-        video_capture.release()
-        cv2.destroyAllWindows()
-
-if __name__ == '__main__':
-    fr = FaceRecognition()
-    fr.run_recognition()
+cap.release()
+cv2.destroyAllWindows()
