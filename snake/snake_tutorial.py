@@ -1,6 +1,6 @@
 import math
 import random
-from matplotlib.font_manager import weight_dict
+# from matplotlib.font_manager import weight_dict
 import pygame
 import sys
 import tkinter as tk
